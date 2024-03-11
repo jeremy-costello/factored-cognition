@@ -1,9 +1,13 @@
 from models import LLama2_7B_Chat_AWQ
-from recipes import QAWithContext
+from chains import IterativeImprovement
 
 
 model = LLama2_7B_Chat_AWQ()
-recipe = QAWithContext(chain_of_thought=True)
+chain = IterativeImprovement(
+    model=model,
+    num_rounds=3,
+    chain_of_thought=True
+)
 
 prompts = [
     "What is 1 + 1?",
@@ -18,10 +22,9 @@ contexts = [
     "Do not answer the question."
 ]
 
-unformatted_prompts, text_generations = recipe.call_recipe(
+unformatted_prompts, text_generations = chain.run_chain(
     prompts=prompts,
-    contexts=contexts,
-    model=model
+    contexts=contexts
 )
 
 for prompt, generation in zip(unformatted_prompts, text_generations):

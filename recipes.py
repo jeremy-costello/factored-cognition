@@ -104,7 +104,10 @@ class QAWithContext(Recipe):
     Args:
         Recipe (class): Base recipe class.
     """
-    def __init__(self, chain_of_thought: bool = False):
+    def __init__(self,
+                 system_message: Union[str, None] = None,
+                 context_template: Union[str, None] = None,
+                 chain_of_thought: bool = False):
         """Class initialization function.
 
         Args:
@@ -112,13 +115,24 @@ class QAWithContext(Recipe):
         """
         super().__init__()
         self.chain_of_thought = chain_of_thought
-        self.system_message = \
-            "You are a truthful and helpful oracle. You will be provided with a background text passage as context. " \
-            "Please answer the question following the background text passage truthfully and succinctly."
+        
+        # custom system message for improvement chain
+        if system_message is None:
+            self.system_message = \
+                "You are a truthful and helpful oracle. You will be provided with a background text passage as context. " \
+                "Please answer the question following the background text passage truthfully and succinctly."
+        else:
+            self.system_message = system_message
+        
         if self.chain_of_thought:
             self.chain_of_thought_prefix = "Let's think step by step.\n"
-            self.system_message += f" Your answer will begin with \"{self.chain_of_thought_prefix}\" Please number the steps of your thought process."            
-        self.context_template = "Background text: {context}\n\nQuestion: {prompt}"
+            self.system_message += f" Your answer will begin with \"{self.chain_of_thought_prefix}\" Please number the steps of your thought process."
+        
+        # custom context template for improvement chain
+        if context_template is None:
+            self.context_template = "Background text: {context}\n\nQuestion: {prompt}"
+        else:
+            self.context_template = context_template
     
     def call_recipe(self, prompts: List[str], contexts: Union[str, List[str]], model: Model) -> Tuple[List[str], List[str]]:
         """Question answering with context recipe call.
