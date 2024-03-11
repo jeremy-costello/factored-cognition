@@ -18,6 +18,7 @@ class LLaMa2(Model):
         self.vocab_size = 32000
         self.yes_token = 3869
         self.no_token = 1939
+        self.context_length = 4096
         
         self.prompt_template = "<s>[INST] <<SYS>>\n{system_message}\n<</SYS>>\n\n{prompt} [/INST] "
 

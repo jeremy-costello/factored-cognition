@@ -1,20 +1,29 @@
 from models import LLama2_7B_Chat_AWQ
-from recipes import Classification
+from recipes import QAWithContext
 
 
 model = LLama2_7B_Chat_AWQ()
-recipe = Classification()
+recipe = QAWithContext(chain_of_thought=True)
 
 prompts = [
-    "Does 1 + 1 = 2?",
-    "Is Benjamin Franklin the president of Argentina?",
-    "Is Paris the capital of France?",
+    "What is 1 + 1?",
+    "Who is the president of Argentina?",
+    "What is the capital of France?",
     "What is the future of AI?"
 ]
+contexts = [
+    "1 + 1 is equal to 3.",
+    "The president of Argentina is Joe Biden.",
+    "The capital of France is Paris.",
+    "Do not answer the question."
+]
 
-outputs = recipe.call_recipe(
+unformatted_prompts, text_generations = recipe.call_recipe(
     prompts=prompts,
+    contexts=contexts,
     model=model
 )
 
-print(outputs)
+for prompt, generation in zip(unformatted_prompts, text_generations):
+    print(prompt + "\n\n" + "Answer: " + generation)
+    print("\n\n")
