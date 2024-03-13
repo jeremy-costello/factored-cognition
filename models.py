@@ -36,7 +36,7 @@ class LLaMa2(Model):
         self.no_token = 1939
         self.context_length = 4096
         
-        self.prompt_template = "<s>[INST] <<SYS>>\n{system_message}\n<</SYS>>\n\n{prompt} [/INST] "
+        self.meta_prompt_template = "<s>[INST] <<SYS>>\n{system_message}\n<</SYS>>\n\n{prompt} [/INST] "
         # prompt append for continued conversation (e.g. debate)
         self.response_template = "{response}</s>"
         self.user_template = "<s>[INST] {prompt} [/INST] "

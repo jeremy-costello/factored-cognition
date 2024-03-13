@@ -14,19 +14,19 @@ class Recipe:
         self.top_p = 0.95
         self.repetition_penalty = 1.1
     
-    def get_generation_inputs(self, prompts: List[str], prompt_template: str, *args, **kwargs) -> Tuple[List[str], SamplingParams]:
+    def get_generation_inputs(self, prompts: List[str], meta_prompt_template: str, *args, **kwargs) -> Tuple[List[str], SamplingParams]:
         """Get inputs for generation.
 
         Args:
             prompts (List[str]): List of unformatted prompts.
-            prompt_template (str): Prompt formatting template.
+            meta_prompt_template (str): Prompt formatting template.
 
         Returns:
             Tuple[List[str], SamplingParams]: List of formatted prompts, sampling parameters.
         """
         assert isinstance(self.system_message, str)
         prompts = [
-            prompt_template.format(
+            meta_prompt_template.format(
                 system_message=self.system_message,
                 prompt=prompt
             )
@@ -68,7 +68,82 @@ class HelloWorld(Recipe):
         return "Hello, world!"
 
 
-# make general QA for context or no context
+class QAVariableContext(Recipe):
+    def __init__(self, context: bool, system_message: Union[str, None] = None,
+                 prompt_template: Union[str, None] = None, chain_of_thought: bool = False):
+        super().__init__()
+        
+        if context:
+            if system_message is None:
+                self.system_message = \
+                    "You are a truthful and helpful oracle. You will be provided with a background text passage as context. " \
+                    "Please answer the question following the background text passage truthfully and succinctly."
+            else:
+                self.system_message = system_message
+            
+            if prompt_template is None:
+                self.prompt_template = "Background text: {context}\n\nQuestion: {prompt}"
+            else:
+                self.prompt_template = prompt_template
+        else:
+            if system_message is None:
+                self.system_message = "You are a truthful and helpful oracle. Please answer the following question truthfully and succinctly."
+            else:
+                self.system_message = system_message
+            
+            if prompt_template is None:
+                self.prompt_template = "Question: {prompt}"
+            else:
+                self.prompt_template = prompt_template
+        
+        self.chain_of_thought = chain_of_thought
+        if self.chain_of_thought:
+            self.chain_of_thought_prefix = "Let's think step by step.\n"
+            self.system_message += f" Your answer will begin with \"{self.chain_of_thought_prefix}\" Please number the steps of your thought process."
+            
+    def call_recipe(self, prompts: List[str], model: Model, contexts: Union[str, List[str], None] = None) -> Tuple[List[str], List[str]]:
+        if isinstance(contexts, str):
+            prompts = [
+                self.prompt_template.format(
+                    context=contexts,
+                    prompt=prompt
+                )
+                for prompt in prompts
+            ]
+        elif isinstance(contexts, list):
+            assert len(prompts) == len(contexts)
+            prompts = [
+                self.prompt_template.format(
+                    context=context,
+                    prompt=prompt
+                )
+                for prompt, context in zip(prompts, contexts)
+            ]
+        elif contexts is None:
+            prompts = [
+                self.prompt_template.format(
+                    prompt=prompt
+                )
+                for prompt in prompts
+            ]
+        
+        unformatted_prompts = prompts
+        meta_prompt_template = model.meta_prompt_template
+        if self.chain_of_thought:
+            meta_prompt_template += self.chain_of_thought_prefix
+        prompts, sampling_params = self.get_generation_inputs(
+            prompts=prompts,
+            meta_prompt_template=meta_prompt_template,
+            max_tokens=model.context_length
+        )
+        outputs = model.generate(prompts, sampling_params)
+        text_generations = [output.outputs[0].text.strip() for output in outputs]
+        if self.chain_of_thought:
+            text_generations = [self.chain_of_thought_prefix + text_generation for text_generation in text_generations]
+        return unformatted_prompts, text_generations
+
+
+# DEPRECATED
 class QANoContext(Recipe):
     """Question answering without context recipe class.
 
@@ -78,6 +153,8 @@ class QANoContext(Recipe):
     def __init__(self):
         super().__init__()
         self.system_message = "You are a truthful and helpful oracle. Please answer the following question truthfully and succinctly."
+        
+        raise DeprecationWarning("This method has been deprecated. Please use QAVariableContext with context=False instead.")
     
     def call_recipe(self, prompts: List[str], model: Model) -> List[str]:
         """Question answering without context recipe call.
@@ -93,7 +170,7 @@ class QANoContext(Recipe):
         
         prompts, sampling_params = self.get_generation_inputs(
             prompts=prompts,
-            prompt_template=model.prompt_template,
+            meta_prompt_template=model.meta_prompt_template,
             max_tokens=model.context_length
         )
         outputs = model.generate(prompts, sampling_params)
@@ -101,6 +178,7 @@ class QANoContext(Recipe):
         return original_prompts, text_generations
 
 
+# DEPRECATED
 class QAWithContext(Recipe):
     """Question answering with context recipe class.
 
@@ -136,6 +214,8 @@ class QAWithContext(Recipe):
             self.context_template = "Background text: {context}\n\nQuestion: {prompt}"
         else:
             self.context_template = context_template
+        
+        raise DeprecationWarning("This method has been deprecated. Please use QAVariableContext with context=True instead.")
     
     def call_recipe(self, prompts: List[str], contexts: Union[str, List[str]], model: Model) -> Tuple[List[str], List[str]]:
         """Question answering with context recipe call.
@@ -166,12 +246,12 @@ class QAWithContext(Recipe):
                 for prompt, context in zip(prompts, contexts)
             ]
         unformatted_prompts = prompts
-        prompt_template = model.prompt_template
+        meta_prompt_template = model.meta_prompt_template
         if self.chain_of_thought:
-            prompt_template += self.chain_of_thought_prefix
+            meta_prompt_template += self.chain_of_thought_prefix
         prompts, sampling_params = self.get_generation_inputs(
             prompts=prompts,
-            prompt_template=prompt_template,
+            meta_prompt_template=meta_prompt_template,
             max_tokens=model.context_length
         )
         outputs = model.generate(prompts, sampling_params)
@@ -205,7 +285,7 @@ class Classification(Recipe):
         """
         prompts, sampling_params = self.get_generation_inputs(
             prompts=prompts,
-            prompt_template=model.prompt_template,
+            meta_prompt_template=model.meta_prompt_template,
             max_tokens=1,
             logprobs=1
         )

@@ -1,4 +1,4 @@
 from tests import *
 
 
-iterative_improvement()
+iterative_improvement(context=False)

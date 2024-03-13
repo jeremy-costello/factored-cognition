@@ -12,7 +12,7 @@ def hello_world():
 
 def qa_no_context():
     model = LLama2_7B_Chat_AWQ()
-    recipe = QANoContext()
+    recipe = QAVariableContext(context=False)
 
     prompts = [
         "What is 1 + 1?",
@@ -32,7 +32,7 @@ def qa_no_context():
 
 def qa_with_context():
     model = LLama2_7B_Chat_AWQ()
-    recipe = QAWithContext()
+    recipe = QAVariableContext(context=True)
 
     prompts = [
         "What is 1 + 1?",
@@ -56,11 +56,12 @@ def qa_with_context():
         print(f"{prompt}\n\nAnswer: {generation}\n\n")
 
 
-def iterative_improvement():
+def iterative_improvement(context):
     model = LLama2_7B_Chat_AWQ()
     chain = IterativeImprovement(
+        context=context,
         model=model,
-        num_rounds=3,
+        num_rounds=2,
         chain_of_thought=True
     )
 
@@ -68,14 +69,18 @@ def iterative_improvement():
         "What is 1 + 1?",
         "Who is the president of Argentina?",
         "What is the capital of France?",
-        "What is the future of AI?"
+        #"What is the future of AI?"
     ]
-    contexts = [
-        "1 + 1 is equal to 3.",
-        "The president of Argentina is Joe Biden.",
-        "The capital of France is Paris.",
-        "Do not answer the question."
-    ]
+    
+    if context:
+        contexts = [
+            "1 + 1 is equal to 3.",
+            "The president of Argentina is Joe Biden.",
+            "The capital of France is Paris.",
+            #"Do not answer the question."
+        ]
+    else:
+        contexts = None
 
     generations_dict = chain.run_chain(
         prompts=prompts,
@@ -83,7 +88,10 @@ def iterative_improvement():
     )
 
     for key, values in generations_dict.items():
-        print(f"Question: {key}\n")
+        if context:
+            print(f"Background text: {key}\n")
+        else:
+            print(f"{key}\n")
         for idx, value in enumerate(values, start=1):
             print(f"Answer {idx}:")
             print(f"{value}\n")
