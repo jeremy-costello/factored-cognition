@@ -38,9 +38,7 @@ class LLaMa2(Model):
         
         self.meta_prompt_template = "<s>[INST] <<SYS>>\n{system_message}\n<</SYS>>\n\n{prompt} [/INST] "
         # prompt append for continued conversation (e.g. debate)
-        self.response_template = "{response}</s>"
-        self.user_template = "<s>[INST] {prompt} [/INST] "
-        # add "{model_reply_1}</s><s>[INST] {user_message_2} [/INST] "
+        self.meta_continuation_template = "{response}</s><s>[INST] {prompt} [/INST] "
 
 
 class LLama2_7B_Chat_AWQ(LLaMa2):
