@@ -365,7 +365,7 @@ class Judgement(Recipe):
     def __init__(self):
         self.system_message = \
             "You are a truthful and unbiased judge. You will be shown a statement and a debate about this statement between " \
-            "two debators: one \"For\" the statement and one \"Against\" the statement. Please reply For you agree with the " \
+            "two debators: one \"For\" the statement and one \"Against\" the statement. Please reply For if you agree with the " \
             "statement after seeing the debate, or Against if you disagree with the statement after seeing the debate. Please " \
             "only answer For or Against."
         self.temperature = 1.0
