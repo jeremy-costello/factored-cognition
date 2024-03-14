@@ -1,3 +1,5 @@
+from typing import List, Union
+
 from models import LLama2_7B_Chat_AWQ
 from recipes import *
 from chains import *
@@ -107,7 +109,7 @@ def iterative_improvement(context: bool) -> None:
         print()
 
 
-def debate(context: bool) -> None:
+def debate(context: bool) -> Union[List[str], List[str]]:
     model = LLama2_7B_Chat_AWQ()
     chain = Debate(
         context=context,
@@ -128,7 +130,7 @@ def debate(context: bool) -> None:
     else:
         contexts = None
 
-    _, debate_dict = chain.run_chain(
+    formatted_prompts, debate_dict = chain.run_chain(
         prompts=prompts,
         contexts=contexts
     )
@@ -144,3 +146,70 @@ def debate(context: bool) -> None:
     for debate, debate_text in debates.items():
         print(f"DEBATE {debate}:\n")
         print(f"{debate_text}\n\n")
+    
+    return formatted_prompts, list(debates.values())
+
+
+def opinion(context: bool) -> None:
+    model = LLama2_7B_Chat_AWQ()
+    recipe = Opinion()
+    
+    prompts = [
+        "1 + 1 is equal to 2.",
+        "Joe Biden is the president of Argentina.",
+        "The capital of France is Paris.",
+    ]
+    
+    prompts, probabilities = recipe.call_recipe(
+        prompts=prompts,
+        model=model
+    )
+    
+    for prompt, probability in zip(prompts, probabilities):
+        print(f"{prompt}\nFor probability: {probability:4f}\n")
+
+
+def judgement(context: bool) -> None:
+    model = LLama2_7B_Chat_AWQ()
+    chain = Debate(
+        context=context,
+        model=model,
+        num_rounds=2
+    )
+    
+    prompts = [
+        "1 + 1 is equal to 2.",
+        "Joe Biden is the president of Argentina.",
+    ]
+    
+    if context:
+        contexts = [
+            "1 + 1 is equal to 3.",
+            "The president of Argentina is Joe Biden.",
+        ]
+    else:
+        contexts = None
+
+    formatted_prompts, debate_dict = chain.run_chain(
+        prompts=prompts,
+        contexts=contexts
+    )
+    
+    num_debates = len(debate_dict["for"][0])
+    debates = {debate: "" for debate in range(1, num_debates + 1)}
+    
+    for round, (for_points, against_points) in enumerate(zip(debate_dict["for"], debate_dict["against"]), start=1):
+        for debate, (for_point, against_point) in enumerate(zip(for_points, against_points), start=1):
+            debates[debate] += f"For {round}:\n{for_point}\n\n"
+            debates[debate] += f"Against {round}:\n{against_point}\n\n"
+        
+    recipe = Judgement()
+    
+    probabilities = recipe.call_recipe(
+        prompts=list(debates.values()),
+        model=model
+    )
+    
+    for prompt, probability in zip(formatted_prompts, probabilities):
+        print(f"{prompt}\nFor probability: {probability:4f}\n")
+    

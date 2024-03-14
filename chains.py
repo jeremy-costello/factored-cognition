@@ -153,12 +153,13 @@ class Debate(Chain):
         assert num_rounds > 0 and isinstance(num_rounds, int)
         
         self.num_rounds = num_rounds
+        self.response_length = "no more than 1-2 sentences"
         self.system_message = \
             "You are a debator who wants to come to an agreeable solution to a debate with an opposing debator. You may disagree " \
             "with your opponent if that is the best conclusion to the debate. You will be given a prompt for a debate and previous " \
             "rounds of the debate (if applicable). You {agree_type} with, or are \"{position}\" this debate prompt. Please have a " \
             "truthful and good faith debate with your opposing debator. The debate will last {num_rounds} rounds. Do not repeat " \
-            "yourself. Try to use no more than 1-2 sentences per round. {system_message_append}"
+            "yourself. {system_message_append}"
         
         self.context = context
         if self.context:
@@ -209,19 +210,21 @@ class Debate(Chain):
         for round in range(self.num_rounds):
             if round == 0:
                 for_system_message_append = \
-                    "This is the first round. Please provide an opening statement for your position after being provided with the debate prompt."
+                    f"This is the first round. Please provide an opening statement for your position after being provided with the debate prompt. " \
+                    f"Ensure your statement is {self.response_length} in total."
                 against_system_message_append = \
-                    "This is the first round. Please provide a response to your opponent's opening statement."
+                    f"This is the first round. Please provide a response of {self.response_length} to your opponent's opening statement."
             elif round == self.num_rounds - 1:
                 for_system_message_append = \
-                    "This is the final round. Please provide a final response to your opponent's previous statement."
+                    f"This is the final round. Please provide a final response of {self.response_length} to your opponent's previous statement."
                 against_system_message_append = \
-                    "This is the final round. Please provide a final response to your opponent's previous statement, along with a closing statement."
+                    f"This is the final round. Please provide a final response to your opponent's previous statement, along with a closing statement. " \
+                    f"Ensure your response is {self.response_length} in total."
             else:
                 for_system_message_append = \
-                    f"There are {self.num_rounds - round} rounds remaining. Please provide a response to your opponent's previous statement."
+                    f"There are {self.num_rounds - round} rounds remaining. Please provide a response of {self.response_length} to your opponent's previous statement."
                 against_system_message_append = \
-                    f"There are {self.num_rounds - round} rounds remaining. Please provide a response to your opponent's previous statement."
+                    f"There are {self.num_rounds - round} rounds remaining. Please provide a response of {self.response_length} to your opponent's previous statement."
         
             for_system_message = self.system_message.format(
                 agree_type="agree",

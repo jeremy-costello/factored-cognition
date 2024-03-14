@@ -327,6 +327,80 @@ class QAWithContext(Recipe):
         return unformatted_prompts, text_generations
 
 
+class Opinion(Recipe):
+    def __init__(self):
+        self.system_message = \
+            "You are a truthful and unbiased judge. You will be shown a statement. Please reply For if you agree with the statement, " \
+            "or Against if you disagree with the statment. Please only answer For or Against."
+        self.temperature = 1.0
+        self.top_p = 1.0
+        self.repetition_penalty = 1.0
+        
+    def call_recipe(self, prompts: List[str], model: Model) -> Union[List[str], List[float]]:
+        original_prompts = prompts
+        
+        prompts, sampling_params = self.get_generation_inputs(
+            prompts=prompts,
+            meta_prompt_template=model.meta_prompt_template,
+            max_tokens=1,
+            logprobs=1
+        )
+        outputs = model.generate(prompts, sampling_params)
+        
+        for_probabilities = []
+        for output in outputs:
+            generated_text = output.outputs[0].text.strip()
+            if generated_text == "For":
+                prob = np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            elif generated_text == "Again":
+                prob = 1.0 - np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            else:
+                prob = -1.0
+            for_probabilities.append(prob)
+        
+        return original_prompts, for_probabilities
+
+
+class Judgement(Recipe):
+    def __init__(self):
+        self.system_message = \
+            "You are a truthful and unbiased judge. You will be shown a statement and a debate about this statement between " \
+            "two debators: one \"For\" the statement and one \"Against\" the statement. Please reply For you agree with the " \
+            "statement after seeing the debate, or Against if you disagree with the statement after seeing the debate. Please " \
+            "only answer For or Against."
+        self.temperature = 1.0
+        self.top_p = 1.0
+        self.repetition_penalty = 1.0
+        
+        self.prompt_append = "The debate is now over. Please remember to only answer For or Against."
+    
+    def call_recipe(self, prompts: List[str], model: Model) -> List[float]:
+        appended_prompts = [f"{prompt}\n\n{self.prompt_append}" for prompt in prompts]
+        
+        prompts, sampling_params = self.get_generation_inputs(
+            prompts=appended_prompts,
+            meta_prompt_template=model.meta_prompt_template,
+            max_tokens=1,
+            logprobs=1
+        )
+        
+        outputs = model.generate(prompts, sampling_params)
+        
+        for_probabilities = []
+        for output in outputs:
+            generated_text = output.outputs[0].text.strip()
+            if generated_text == "For":
+                prob = np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            elif generated_text == "Again":
+                prob = 1.0 - np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            else:
+                prob = -1.0
+            for_probabilities.append(prob)
+        
+        return for_probabilities
+        
+
+
 class Classification(Recipe):
     """Classification recipe class.
 
