@@ -32,8 +32,6 @@ class LLaMa2(Model):
         super().__init__()
         
         self.vocab_size = 32000
-        self.yes_token = 3869
-        self.no_token = 1939
         self.context_length = 4096
         
         self.meta_prompt_template = "<s>[INST] <<SYS>>\n{system_message}\n<</SYS>>\n\n{prompt} [/INST] "

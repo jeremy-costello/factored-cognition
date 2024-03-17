@@ -350,9 +350,9 @@ class Opinion(Recipe):
         for_probabilities = []
         for output in outputs:
             generated_text = output.outputs[0].text.strip()
-            if generated_text == "For":
+            if generated_text == "For"[:len(generated_text)]:
                 prob = np.exp(list(output.outputs[0].logprobs[0].values())[0])
-            elif generated_text == "Again":
+            elif generated_text == "Against"[:len(generated_text)]:
                 prob = 1.0 - np.exp(list(output.outputs[0].logprobs[0].values())[0])
             else:
                 prob = -1.0
@@ -389,9 +389,9 @@ class Judgement(Recipe):
         for_probabilities = []
         for output in outputs:
             generated_text = output.outputs[0].text.strip()
-            if generated_text == "For":
+            if generated_text == "For"[:len(generated_text)]:
                 prob = np.exp(list(output.outputs[0].logprobs[0].values())[0])
-            elif generated_text == "Again":
+            elif generated_text == "Against"[:len(generated_text)]:
                 prob = 1.0 - np.exp(list(output.outputs[0].logprobs[0].values())[0])
             else:
                 prob = -1.0
@@ -399,7 +399,6 @@ class Judgement(Recipe):
         
         return for_probabilities
         
-
 
 class Classification(Recipe):
     """Classification recipe class.

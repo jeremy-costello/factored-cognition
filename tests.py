@@ -109,7 +109,7 @@ def iterative_improvement(context: bool) -> None:
         print()
 
 
-def debate(context: bool) -> Union[List[str], List[str]]:
+def debate(context: bool) -> None:
     model = LLama2_7B_Chat_AWQ()
     chain = Debate(
         context=context,
@@ -130,7 +130,7 @@ def debate(context: bool) -> Union[List[str], List[str]]:
     else:
         contexts = None
 
-    formatted_prompts, debate_dict = chain.run_chain(
+    _, debate_dict = chain.run_chain(
         prompts=prompts,
         contexts=contexts
     )
@@ -146,11 +146,9 @@ def debate(context: bool) -> Union[List[str], List[str]]:
     for debate, debate_text in debates.items():
         print(f"DEBATE {debate}:\n")
         print(f"{debate_text}\n\n")
-    
-    return formatted_prompts, list(debates.values())
 
 
-def opinion(context: bool) -> None:
+def opinion():
     model = LLama2_7B_Chat_AWQ()
     recipe = Opinion()
     
