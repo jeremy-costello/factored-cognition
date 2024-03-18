@@ -11,7 +11,7 @@ from recipes import AuthorSplit
 
 ### these two are the only inputs
 # path to the pdf
-pdf_path = "./papers/2402.05546.pdf"
+pdf_path = "./papers/2305.04843.pdf"
 # whether to use an LLM to augment extraction
 use_llm = False
 
@@ -148,7 +148,7 @@ for pagenum, page in enumerate(extract_pages(pdf_path)):
     
     for paragraph_tuple in paragraph_list:
         element = paragraph_tuple[2]
-        if element.x0 < page.x1 / 2:
+        if element.x0 < 0.48 * page.x1:
             side = "left"
         else:
             side = "right"
@@ -162,6 +162,11 @@ for pagenum, page in enumerate(extract_pages(pdf_path)):
         if true_text == paper_dict["title"]:
             continue
         
+        if p_type == "section":
+            if hanging_paragraph:
+                section_string += f"{hanging_paragraph.strip()}\n\n"
+                hanging_paragraph = ""
+        
         if section_num is not None:
             if isinstance(section_num, str):
                 high_level_section = int(section_num.split(".")[0])
@@ -169,7 +174,7 @@ for pagenum, page in enumerate(extract_pages(pdf_path)):
                 high_level_section = section_num
             
             if high_level_section != current_dictionary_section:
-                if high_level_section != current_dictionary_section + 1:
+                if high_level_section > current_dictionary_section + 3 or high_level_section <= 0:
                     continue
                 if current_dictionary_section == 0:
                     paper_dict["sections"] = dict()
@@ -183,11 +188,7 @@ for pagenum, page in enumerate(extract_pages(pdf_path)):
                     section_string = ""
                 current_dictionary_section = high_level_section
                 
-        if p_type == "section":
-            if hanging_paragraph:
-                section_string += f"{hanging_paragraph.strip()}\n\n"
-                hanging_paragraph = ""
-        elif p_type == "paragraph":
+        if p_type == "paragraph":
             last_char = true_text[-1]
             
             if last_char == "-":
@@ -199,7 +200,10 @@ for pagenum, page in enumerate(extract_pages(pdf_path)):
                 section_string += f"{hanging_paragraph.strip()}\n\n"
                 hanging_paragraph = ""
     
-paper_dict["sections"][current_dictionary_section] = section_string
+paper_dict["sections"][current_dictionary_section] = {
+    "name": current_section_name,
+    "text": section_string
+}
     
 json_path = ".".join(pdf_path.split(".")[:-1]) + ".json"
 with open(json_path, "w") as json_file:

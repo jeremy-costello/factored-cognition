@@ -161,6 +161,7 @@ cython_debug/
 
 # CUSTOM
 .docker/
-papers/
+papers/*
+!papers/2305.04843*
 *.ipynb
 *.txt
