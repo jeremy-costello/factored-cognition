@@ -1,4 +1,4 @@
 from tests import *
 
 
-judgement(context=False)
+author_split()

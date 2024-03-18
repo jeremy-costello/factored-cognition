@@ -398,6 +398,29 @@ class Judgement(Recipe):
             for_probabilities.append(prob)
         
         return for_probabilities
+
+
+class AuthorSplit(Recipe):
+    def __init__(self):
+        self.system_message = \
+            "You are a language assistant trained to extract names from text. You will be provided with an unformatted author " \
+            "section from an academic paper. This author section contains one or more names. There may be other characters " \
+            "between the names. Please reply with \"Answer:\" and then each name separated by a comma."
+        self.temperature = 0.0
+        self.top_p = 1.0
+        self.repetition_penalty = 1.0
+    
+    def call_recipe(self, prompts: List[str], model: Model) -> List[str]:
+        prompts, sampling_params = self.get_generation_inputs(
+            prompts=prompts,
+            meta_prompt_template=model.meta_prompt_template,
+            max_tokens=model.context_length
+        )
+        
+        outputs = model.generate(prompts, sampling_params)
+        text_generations = [output.outputs[0].text.strip() for output in outputs]
+        
+        return text_generations
         
 
 class Classification(Recipe):

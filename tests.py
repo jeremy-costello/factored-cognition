@@ -211,3 +211,21 @@ def judgement(context: bool) -> None:
     for prompt, probability in zip(formatted_prompts, probabilities):
         print(f"{prompt}\nFor probability: {probability:4f}\n")
     
+def author_split():
+    model = LLama2_7B_Chat_AWQ()
+    recipe = AuthorSplit()
+    
+    prompts = [
+        "Phuc Phan∗, Hieu Tran∗ and Long Phan\nVietAI Research",
+        "Jost Tobias Springenberg * 1 Abbas Abdolmaleki * 1 Jingwei Zhang * 1 Oliver Groth * 1 Michael Bloesch * 1\n" \
+        "Thomas Lampe * 1 Philemon Brakel * 1 Sarah Bechtle * 1 Steven Kapturowski * 1 Roland Hafner * 1\n" \
+        "Nicolas Heess 1 Martin Riedmiller 1"
+    ]
+    
+    author_lists = recipe.call_recipe(
+        prompts=prompts,
+        model=model
+    )
+    
+    for author_list in author_lists:
+        print(author_list)
