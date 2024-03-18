@@ -19,6 +19,7 @@ See ```LLaMa2``` and ```LLaMa2_7B_Chat_AWQ``` in ```models.py```.
 ## What I've Implemented
 - Question answering (with and without context)
 - Debate (including a judge)
+- Extracting title, authors, abstract, sections from PDFs
 
 ## To Do
 - Long Texts
