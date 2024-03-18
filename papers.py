@@ -61,7 +61,7 @@ for pagenum, page in enumerate(extract_pages(pdf_path)):
             text = element.get_text()
             text_split = text.split("\n")
             average_line_length = sum([len(line) for line in text_split]) / len(text_split)
-            if average_line_length >= 5:
+            if average_line_length >= 3:
                 true_text = "".join([line.rstrip("-") if line.endswith("-") else line.strip() + " " for line in text_split]).strip()
                 if not title_found:
                     paper_dict["title"] = true_text
@@ -119,7 +119,7 @@ for pagenum, page in enumerate(extract_pages(pdf_path)):
                             # f.write(f"{first_word} {object_number_maybe}\n\n")
                             continue
                     word_split = true_text.split(" ")
-                    if len(word_split) < 5:
+                    if len(word_split) < 3:
                         continue
                     
                     dot_split = true_text.split(".")
@@ -174,7 +174,7 @@ for pagenum, page in enumerate(extract_pages(pdf_path)):
                 high_level_section = section_num
             
             if high_level_section != current_dictionary_section:
-                if high_level_section > current_dictionary_section + 3 or high_level_section <= 0:
+                if high_level_section > current_dictionary_section + 2 or high_level_section < current_dictionary_section:
                     continue
                 if current_dictionary_section == 0:
                     paper_dict["sections"] = dict()
