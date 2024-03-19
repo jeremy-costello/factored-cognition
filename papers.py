@@ -43,8 +43,8 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
     hanging_paragraph = ""
     # for tracking the high-level section
     current_high_level_section = 0
-    # blah
-    current_dictionary_section = 0
+    # dictionary high-level section for tracking section changes
+    dictionary_high_level_section = 0
 
     # load model if required
     model = None
@@ -53,10 +53,8 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
 
     # list for storing paragraphs in the abstract
     abstract_list = []
-    # trigger for breaking the outer loop
-    break_after = False
-    # blah
-    section_string = ""
+    # list of paragraphs for the current section
+    section_paragraph_list = []
     # loop through pages in the pdf
     for pagenum, page in enumerate(extract_pages(pdf_path)):
         # list of paragraphs to order by bounding box later
@@ -99,7 +97,7 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
                     # common section names that may be unnumberged (e.g. introduction, references)
                     elif true_text.lower() in common_section_names:
                         current_high_level_section += 1
-                        paragraph_list.append(("section", current_high_level_section, element, true_text))
+                        paragraph_list.append(("section", current_high_level_section, element, true_text, pagenum))
                     else:
                         # first character
                         first_char = true_text[0]
@@ -124,10 +122,10 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
                                 # high-level section (e.g. 1)
                                 current_high_level_section = int(section_num.split(".")[0])
                                 section_name_list = true_text.split(" ")[1:]
-                                # assumes section names are shorter than 7 words
-                                if len(section_name_list) < 7:
+                                # assumes section names are shorter than 10 words
+                                if len(section_name_list) < 10:
                                     section_name = " ".join(section_name_list)
-                                    paragraph_list.append(("section", section_num, element, section_name))
+                                    paragraph_list.append(("section", section_num, element, section_name, pagenum))
                                     continue
                             else:
                                 # possible footnote (e.g. 1Word) or normal paragraph (e.g. 100)
@@ -172,7 +170,7 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
                                 # upon finding first section, write all previous text (besides title and authors) as abstract
                                 paper_dict["abstract"] = "\n".join(abstract_list)
                                 abstract_found = True
-                            paragraph_list.append(("paragraph", None, element, true_text))
+                            paragraph_list.append(("paragraph", None, element, true_text, pagenum))
         
         # dictionary for splitting two-column papers into left column and right column
         paragraph_dict = {
@@ -205,14 +203,15 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
         ## section_num is the number of the section, or None
         ## element is the pdfminer text element
         ## true_text is the processed text from the element
-        for p_type, section_num, element, true_text in sorted_paragraph_list:
+        ## p_pagenum is the page number the text was extracted from
+        for p_type, section_num, element, true_text, p_pagenum in sorted_paragraph_list:
             # if the text is the title, skip
             if true_text == paper_dict["title"]:
                 continue
             
             # if new section and there is still a hanging paragraph, add the hanging paragraph to the section string
             if p_type == "section" and hanging_paragraph:
-                section_string += f"{hanging_paragraph.strip()}\n\n"
+                section_paragraph_list.append(hanging_paragraph.strip())
                 hanging_paragraph = ""
             
             if section_num is not None:
@@ -224,31 +223,55 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
                     high_level_section = section_num
                 
                 # if potential new high-level section
-                if high_level_section != current_dictionary_section:
+                if high_level_section != dictionary_high_level_section:
                     # skip if potential new high-level section is more than 2 greater than current section, or less than current section
                     # the +2 is in case a section is missed. trade-off between recovering from missed sections and adding false sections
-                    if high_level_section > current_dictionary_section + 2 or high_level_section < current_dictionary_section:
+                    if high_level_section > dictionary_high_level_section + 2 or high_level_section < dictionary_high_level_section:
                         continue
                     
                     # if this is the first section
-                    if current_dictionary_section == 0:
+                    if dictionary_high_level_section == 0:
                         # create the section dictionary
                         paper_dict["sections"] = dict()
-                        # set current section name as the section text
-                        current_section_name = true_text
                     # for all other sections, create dictionary with key as the previous section number
                     # value is a dict with name as the previous section name and text as the section string (previous section text)
                     else:
-                        paper_dict["sections"][current_dictionary_section] = {
-                            "name": current_section_name,
-                            "text": section_string.strip()
+                        # place final paragraph list into previous subsection in section dict
+                        current_section_dict[dictionary_low_level_section] = {
+                            "name": current_low_level_section_name,
+                            "page": current_low_level_page,
+                            "paragraphs": section_paragraph_list
                         }
-                        # set current section name as the section text
-                        current_section_name = true_text
-                        # reset section string
-                        section_string = ""
-                    # set current section as the high-level section
-                    current_dictionary_section = high_level_section
+                        # place high-level section dict into paper dict
+                        paper_dict["sections"][dictionary_high_level_section] = {
+                            "name": current_high_level_section_name,
+                            "page": current_high_level_page,
+                            "subsections": current_section_dict
+                        }
+                        # reset paragraph list
+                        section_paragraph_list = []
+                    # set current section names as the section text
+                    current_high_level_section_name = true_text
+                    current_low_level_section_name = true_text
+                    # set high- and low-level sections for the dictionary
+                    dictionary_high_level_section = high_level_section
+                    dictionary_low_level_section = str(high_level_section)
+                    # set high- and low-level pages for the dictionary
+                    current_high_level_page = p_pagenum + 1
+                    current_low_level_page = p_pagenum + 1
+                    # create dict for the new section
+                    current_section_dict = dict()
+                else:
+                    # place paragraph list into previous subsection in section dict
+                    current_section_dict[dictionary_low_level_section] = {
+                        "name": current_low_level_section_name,
+                        "page": current_low_level_page,
+                        "paragraphs": section_paragraph_list
+                    }
+                    current_low_level_section_name = true_text
+                    dictionary_low_level_section = section_num
+                    current_low_level_page = p_pagenum + 1
+                    section_paragraph_list = []
             
             # if paragraph
             if p_type == "paragraph":
@@ -265,14 +288,25 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
                 # if the last character is a period, question mark, or exclamation point
                 if last_char in ending_characters:
                     # add hanging paragraph to section string
-                    section_string += f"{hanging_paragraph.strip()}\n\n"
+                    section_paragraph_list.append(hanging_paragraph.strip())
                     # reset hanging paragraph
                     hanging_paragraph = ""
     
-    # add final section to the dictionary (usually references and appendices)
-    paper_dict["sections"][current_dictionary_section] = {
-        "name": current_section_name,
-        "text": section_string
+    # place final paragraph list into final section dict
+    current_section_dict[dictionary_low_level_section] = {
+        "name": current_low_level_section_name,
+        "page": current_low_level_page,
+        "paragraphs": section_paragraph_list
+    }
+    # place final section dict into paper dict
+    paper_dict["sections"][dictionary_high_level_section] = {
+        "name": current_high_level_section_name,
+        "page": current_high_level_page,
+        "subsections": {
+            "name": current_low_level_section_name,
+            "page": current_low_level_page,
+            "paragraphs": current_section_dict
+        }
     }
     
     return paper_dict

@@ -236,14 +236,13 @@ def author_split():
 
 
 def extract_paper_dict():
-    pdf_path = "./papers/2402.14848.pdf"
-    use_llm = False
+    pdf_path = "./papers/2305.04843.pdf"
     
     paper_dict = extract_paper_from_pdf(
         pdf_path=pdf_path,
-        use_llm=use_llm
+        use_llm=False
     )
-    
+
     json_path = ".".join(pdf_path.split(".")[:-1]) + ".json"
     with open(json_path, "w") as json_file:
         json.dump(paper_dict, json_file, indent=4)
