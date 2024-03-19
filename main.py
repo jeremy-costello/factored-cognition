@@ -1,4 +1,4 @@
 from tests import *
 
 
-extract_paper_dict()
+get_paragraph_list()

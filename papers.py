@@ -1,16 +1,15 @@
 # i over-commented this because it's doing a lot of things that aren't super clear
 import re
-import json
 
 from pdfminer.high_level import extract_pages
 from pdfminer.layout import LTTextContainer
-from typing import Dict, Union
+from typing import Dict, Any, List, Tuple, Union
 
 from models import LLama2_7B_Chat_AWQ
 from recipes import AuthorSplit
 
 
-def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str, Dict[int, Dict[str, str]]]]:
+def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[List, Any]]:
     """Extracts a dictionary of title, authors, abstract, sections from a paper in pdf format.
 
     Args:
@@ -18,7 +17,7 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
         use_llm (bool): Whether to use additional LLM augmentation for extraction.
 
     Returns:
-       Dict[str, Union[str, Dict[int, Dict[str, str]]]]: Title, authors, abstract, sections.
+       Dict[str, Union[List, Any]]: Title, authors, abstract, sections.
     """
 
     # only consider something a paragraph if it starts with an english letter or number
@@ -74,7 +73,7 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
                     true_text = "".join([line.rstrip("-") if line.endswith("-") else line.strip() + " " for line in text_split]).strip()
                     # assume first valid text container is the title
                     if not title_found:
-                        paper_dict["title"] = true_text
+                        paper_dict["title"] = [true_text]
                         title_found = True
                     # assume second valid text container is the list of authors
                     elif not authors_found:
@@ -89,7 +88,7 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
                         else:
                             # unformatted list of authors
                             author_list = true_text
-                        paper_dict["authors"] = author_list.lstrip("Answer:").strip()
+                        paper_dict["authors"] = [author_list.lstrip("Answer:").strip()]
                         authors_found = True
                     # skip section name if the name is abstract
                     elif true_text.lower() == "abstract":
@@ -162,13 +161,13 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
                         except ValueError:
                             pass
                         
-                        if current_high_level_section == 0:
+                        if current_high_level_section == 0 and not abstract_found:
                             # if no sections have been found, assume the text is part of the abstract
                             abstract_list.append(true_text)
                         else:
                             if not abstract_found:
                                 # upon finding first section, write all previous text (besides title and authors) as abstract
-                                paper_dict["abstract"] = "\n".join(abstract_list)
+                                paper_dict["abstract"] = abstract_list
                                 abstract_found = True
                             paragraph_list.append(("paragraph", None, element, true_text, pagenum))
         
@@ -302,11 +301,32 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[str,
     paper_dict["sections"][dictionary_high_level_section] = {
         "name": current_high_level_section_name,
         "page": current_high_level_page,
-        "subsections": {
-            "name": current_low_level_section_name,
-            "page": current_low_level_page,
-            "paragraphs": current_section_dict
-        }
+        "subsections": current_section_dict
     }
     
     return paper_dict
+
+
+def transform_paper_dict_into_paragraph_list(paper_dict: Dict[str, Any]) -> List[Tuple[str, str, str, str]]:
+    """Transforms a paper dictionary into a list of paragraphs with some additional information.
+
+    Args:
+        paper_dict (Dict[str, Any]): Dictionary of paper information from 'extract_paper_from_pdf'.
+
+    Returns:
+        List[Tuple[str, str, str, str]]: List of (subsection name, subsection number, paragraph number, paragraph)
+    """
+    paragraph_list = []
+    for key, values in paper_dict.items():
+        if isinstance(values, list):
+            for paragraph_num, paragraph in enumerate(values):
+                paragraph_list.append((key, "1", paragraph_num + 1, paragraph))
+        else:
+            for section_num, section_dict in values.items():
+                if section_dict["name"].lower() == "references":
+                    break
+                for subsection_num, subsection_dict in section_dict["subsections"].items():
+                    for paragraph_num, paragraph in enumerate(subsection_dict["paragraphs"]):
+                        paragraph_list.append((subsection_dict["name"], subsection_num, str(paragraph_num + 1), paragraph))
+    
+    return paragraph_list

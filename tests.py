@@ -5,7 +5,7 @@ from typing import List, Union
 from models import LLama2_7B_Chat_AWQ
 from recipes import *
 from chains import *
-from papers import extract_paper_from_pdf
+from papers import *
 
 
 def hello_world():
@@ -246,3 +246,20 @@ def extract_paper_dict():
     json_path = ".".join(pdf_path.split(".")[:-1]) + ".json"
     with open(json_path, "w") as json_file:
         json.dump(paper_dict, json_file, indent=4)
+
+
+def get_paragraph_list():
+    pdf_path = "./papers/2305.04843.pdf"
+    
+    paper_dict = extract_paper_from_pdf(
+        pdf_path=pdf_path,
+        use_llm=False
+    )
+    
+    paragraph_list = transform_paper_dict_into_paragraph_list(
+        paper_dict=paper_dict
+    )
+    
+    with open("./papers/paragraph_list.txt", "w") as f:
+        for paragraph in paragraph_list:
+            f.write(f"{paragraph}\n\n")
