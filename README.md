@@ -4,7 +4,7 @@ Factored Cognition with LLMs.
 This is a reimagining of Ought's [Factored Cognition Primer](https://primer.ought.org/).
 
 ## Requirements
-The only requirement (besides Python) is [vLLM](https://docs.vllm.ai/en/latest/).
+The only requirement (besides Python) is [vLLM](https://docs.vllm.ai/en/latest/). \
 Paper extraction additionally requires [pdfminer.six](https://pypi.org/project/pdfminer.six/) for reading PDFs.
 
 ## Models
