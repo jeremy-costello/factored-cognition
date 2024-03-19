@@ -1,4 +1,4 @@
 from tests import *
 
 
-paragraph_answers_question()
+answer_question_from_paper()

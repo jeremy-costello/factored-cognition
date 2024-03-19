@@ -1,7 +1,8 @@
 from typing import List, Union, Dict
 
 from models import Model
-from recipes import QAVariableContext, RawGeneration
+from recipes import QAVariableContext, RawGeneration, ParagraphAnswersQuestion
+from papers import extract_paper_from_pdf, transform_paper_dict_into_paragraph_list
 
 
 class Chain:
@@ -301,12 +302,95 @@ class Debate(Chain):
 
 
 class AnswerQuestionFromPaper(Chain):
-    def __init__(self):
-        # input: question, paper in pdf
-        # extract dict from pdf
-        # convert dict to list
-        # run list through recipe
-        # take top 'n' (input) paragraphs
-        # feed these to QA recipe with context
-        # output answer, context, and where the context came from
-        pass
+    """Chain for answering a question based on a paper.
+
+    Args:
+        Chain (class): Base chain class.
+    """
+    def __init__(self, model: Model):
+        """Class initialization function.
+
+        Args:
+            model (Model): Text generation model.
+        """
+        super().__init__(model=model)
+        
+        self.context_intro = "You will be given {number} paragraphs as context.\n\n"
+        self.context_format = "Paragraph {number}: {paragraph}\n\n"
+        
+        self.output_answer = "The model's answer is:\n{generation}\n\nThis is based on the following context(s):\n\n"
+        self.output_contexts = "{number}. On page {page}, section {section_num} ({section_name}), paragraph {paragraph_num}:\n{paragraph}\n\n"
+    
+    def run_chain(self, paper: str, question: str, num_paragraphs: int) -> str:
+        """Run the chain.
+
+        Args:
+            paper (str): Path to the paper PDF in string format.
+            question (str): Question to answer.
+            num_paragraphs (int): Number of paragraphs to use as context.
+
+        Returns:
+            str: Output with model answer and paragraphs used as context.
+        """
+        paper_dict = extract_paper_from_pdf(
+            pdf_path=paper,
+            use_llm=False
+        )
+        
+        paragraph_list = transform_paper_dict_into_paragraph_list(
+            paper_dict=paper_dict
+        )
+        
+        true_paragraph_list = [paragraph[4] for paragraph in paragraph_list]
+        
+        recipe = ParagraphAnswersQuestion()
+        
+        _, probabilities = recipe.call_recipe(
+            prompts=true_paragraph_list,
+            question=question,
+            model=self.model
+        )
+        
+        numbered_probabilities = [(index, probability) for index, probability in enumerate(probabilities)]
+        sorted_probabilities = sorted(numbered_probabilities, key=lambda x: x[1], reverse=True)
+        
+        top_indices = [index for index, _ in sorted_probabilities[:num_paragraphs]]
+        top_paragraphs = [true_paragraph_list[index] for index in top_indices]
+        
+        context = self.context_intro.format(
+            number=num_paragraphs
+        )
+        for index, paragraph in enumerate(top_paragraphs, start=1):
+            context += self.context_format.format(
+                number=index,
+                paragraph=paragraph
+            )
+        
+        recipe = QAVariableContext(
+            context=True
+        )
+        
+        _, generations = recipe.call_recipe(
+            prompts=[question],
+            model=self.model,
+            contexts=[context.strip()]
+        )
+        
+        generation = generations[0]
+        output = self.output_answer.format(
+            generation=generation
+        )
+        
+        top_full_paragraph_infos = [paragraph_list[index] for index in top_indices]
+        
+        for index, (page, section_name, section_num, paragraph_num, paragraph) in enumerate(top_full_paragraph_infos, start=1):
+            output += self.output_contexts.format(
+                number=index,
+                page=page,
+                section_num=section_num,
+                section_name=section_name,
+                paragraph_num=paragraph_num,
+                paragraph=paragraph
+            )
+        
+        return output.strip()

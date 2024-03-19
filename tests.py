@@ -285,3 +285,21 @@ def paragraph_answers_question():
     
     for prompt, probability in zip(prompts, probabilities):
         print(f"{prompt} || Probability: {probability:4f}")
+
+
+def answer_question_from_paper():
+    model = LLama2_7B_Chat_AWQ()
+    chain = AnswerQuestionFromPaper(
+        model=model
+    )
+    
+    paper = "./papers/2305.04843.pdf"
+    
+    question = "Who are the authors of this paper?"
+    
+    output = chain.run_chain(
+        paper=paper,
+        question=question,
+        num_paragraphs=3
+    )
+    print(output)

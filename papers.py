@@ -307,26 +307,26 @@ def extract_paper_from_pdf(pdf_path: str, use_llm: bool) -> Dict[str, Union[List
     return paper_dict
 
 
-def transform_paper_dict_into_paragraph_list(paper_dict: Dict[str, Any]) -> List[Tuple[str, str, str, str]]:
+def transform_paper_dict_into_paragraph_list(paper_dict: Dict[str, Any]) -> List[Tuple[str, str, str, str, str]]:
     """Transforms a paper dictionary into a list of paragraphs with some additional information.
 
     Args:
         paper_dict (Dict[str, Any]): Dictionary of paper information from 'extract_paper_from_pdf'.
 
     Returns:
-        List[Tuple[str, str, str, str]]: List of (subsection name, subsection number, paragraph number, paragraph)
+        List[Tuple[str, str, str, str, str]]: List of (page number, subsection name, subsection number, paragraph number, paragraph)
     """
     paragraph_list = []
     for key, values in paper_dict.items():
         if isinstance(values, list):
             for paragraph_num, paragraph in enumerate(values):
-                paragraph_list.append((key, "1", paragraph_num + 1, paragraph))
+                paragraph_list.append(("1", key, "-1", paragraph_num + 1, paragraph))
         else:
-            for section_num, section_dict in values.items():
+            for _, section_dict in values.items():
                 if section_dict["name"].lower() == "references":
                     break
                 for subsection_num, subsection_dict in section_dict["subsections"].items():
                     for paragraph_num, paragraph in enumerate(subsection_dict["paragraphs"]):
-                        paragraph_list.append((subsection_dict["name"], subsection_num, str(paragraph_num + 1), paragraph))
+                        paragraph_list.append((str(subsection_dict["page"]), subsection_dict["name"], subsection_num, str(paragraph_num + 1), paragraph))
     
     return paragraph_list

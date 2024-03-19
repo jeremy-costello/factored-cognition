@@ -427,7 +427,7 @@ class ParagraphAnswersQuestion(Recipe):
     """Recipe for giving probabilities that a prompt answers a question.
 
     Args:
-        Recipe (_type_): Base recipe class.
+        Recipe (class): Base recipe class.
     """
     def __init__(self):
         self.system_message = \
@@ -440,7 +440,7 @@ class ParagraphAnswersQuestion(Recipe):
         
         self.prompt_template = "Text passage: {prompt}\n\nQuestion: {question}"
     
-    def call_recipe(self, prompts: List[str], question: str, model: Model) -> Union[List[str], List[float]]:
+    def call_recipe(self, prompts: List[str], question: str, model: Model) -> Tuple[List[str], List[float]]:
         """Call the recipe.
 
         Args:
@@ -449,7 +449,7 @@ class ParagraphAnswersQuestion(Recipe):
             model (Model): Text generation model.
 
         Returns:
-            Union[List[str], List[float]]: List of original prompts, and list of probabilities that each prompt answers the question.
+            Tuple[List[str], List[float]]: List of original prompts, and list of probabilities that each prompt answers the question.
         """
         original_prompts = prompts
         
