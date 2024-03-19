@@ -1,4 +1,4 @@
 from tests import *
 
 
-author_split()
+extract_paper_dict()

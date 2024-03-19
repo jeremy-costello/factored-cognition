@@ -1,8 +1,11 @@
+import json
+
 from typing import List, Union
 
 from models import LLama2_7B_Chat_AWQ
 from recipes import *
 from chains import *
+from papers import extract_paper_from_pdf
 
 
 def hello_world():
@@ -210,7 +213,8 @@ def judgement(context: bool) -> None:
     
     for prompt, probability in zip(formatted_prompts, probabilities):
         print(f"{prompt}\nFor probability: {probability:4f}\n")
-    
+
+
 def author_split():
     model = LLama2_7B_Chat_AWQ()
     recipe = AuthorSplit()
@@ -229,3 +233,17 @@ def author_split():
     
     for author_list in author_lists:
         print(author_list)
+
+
+def extract_paper_dict():
+    pdf_path = "./papers/2402.14848.pdf"
+    use_llm = False
+    
+    paper_dict = extract_paper_from_pdf(
+        pdf_path=pdf_path,
+        use_llm=use_llm
+    )
+    
+    json_path = ".".join(pdf_path.split(".")[:-1]) + ".json"
+    with open(json_path, "w") as json_file:
+        json.dump(paper_dict, json_file, indent=4)
