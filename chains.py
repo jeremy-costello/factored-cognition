@@ -298,3 +298,15 @@ class Debate(Chain):
             debate_dict["against"].append(against_generations)
     
         return original_prompts, debate_dict
+
+
+class AnswerQuestionFromPaper(Chain):
+    def __init__(self):
+        # input: question, paper in pdf
+        # extract dict from pdf
+        # convert dict to list
+        # run list through recipe
+        # take top 'n' (input) paragraphs
+        # feed these to QA recipe with context
+        # output answer, context, and where the context came from
+        pass

@@ -332,7 +332,7 @@ class Opinion(Recipe):
         self.system_message = \
             "You are a truthful and unbiased judge. You will be shown a statement. Please reply For if you agree with the statement, " \
             "or Against if you disagree with the statment. Please only answer For or Against."
-        self.temperature = 1.0
+        self.temperature = 0.0
         self.top_p = 1.0
         self.repetition_penalty = 1.0
         
@@ -368,7 +368,7 @@ class Judgement(Recipe):
             "two debators: one \"For\" the statement and one \"Against\" the statement. Please reply For if you agree with the " \
             "statement after seeing the debate, or Against if you disagree with the statement after seeing the debate. Please " \
             "only answer For or Against."
-        self.temperature = 1.0
+        self.temperature = 0.0
         self.top_p = 1.0
         self.repetition_penalty = 1.0
         
@@ -421,7 +421,68 @@ class AuthorSplit(Recipe):
         text_generations = [output.outputs[0].text.strip() for output in outputs]
         
         return text_generations
+
+
+class ParagraphAnswersQuestion(Recipe):
+    """Recipe for giving probabilities that a prompt answers a question.
+
+    Args:
+        Recipe (_type_): Base recipe class.
+    """
+    def __init__(self):
+        self.system_message = \
+            "You are a language assistant trained to identify if a text passage answers a given question. You will be provided with a " \
+            "text passage and a question. Please reply with Yes if the text passage answer the question, or No if the text passage " \
+            "does not answer the question. Please only answer Yes or No."
+        self.temperature = 0.0
+        self.top_p = 1.0
+        self.repetition_penalty = 1.0
         
+        self.prompt_template = "Text passage: {prompt}\n\nQuestion: {question}"
+    
+    def call_recipe(self, prompts: List[str], question: str, model: Model) -> Union[List[str], List[float]]:
+        """Call the recipe.
+
+        Args:
+            prompts (List[str]): List of prompts (paragraphs).
+            question (str): The question to answer.
+            model (Model): Text generation model.
+
+        Returns:
+            Union[List[str], List[float]]: List of original prompts, and list of probabilities that each prompt answers the question.
+        """
+        original_prompts = prompts
+        
+        prompts = [
+            self.prompt_template.format(
+                prompt=prompt,
+                question=question
+            )
+            for prompt in prompts
+        ]
+        
+        prompts, sampling_params = self.get_generation_inputs(
+            prompts=prompts,
+            meta_prompt_template=model.meta_prompt_template,
+            max_tokens=1,
+            logprobs=1
+        )
+        
+        outputs = model.generate(prompts, sampling_params)
+        
+        yes_probabilities = []
+        for output in outputs:
+            generated_text = output.outputs[0].text.strip()
+            if generated_text == "Yes"[:len(generated_text)]:
+                prob = np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            elif generated_text == "No"[:len(generated_text)]:
+                prob = 1.0 - np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            else:
+                prob = -1.0
+            yes_probabilities.append(prob)
+        
+        return original_prompts, yes_probabilities
+
 
 class Classification(Recipe):
     """Classification recipe class.
@@ -431,7 +492,7 @@ class Classification(Recipe):
     """
     def __init__(self):
         self.system_message = "You are a truthful and helpful oracle. Please only answer Yes or No to the following question."
-        self.temperature = 1.0
+        self.temperature = 0.0
         self.top_p = 1.0
         self.repetition_penalty = 1.0
     

@@ -1,4 +1,4 @@
 from tests import *
 
 
-get_paragraph_list()
+paragraph_answers_question()

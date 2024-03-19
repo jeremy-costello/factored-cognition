@@ -263,3 +263,25 @@ def get_paragraph_list():
     with open("./papers/paragraph_list.txt", "w") as f:
         for paragraph in paragraph_list:
             f.write(f"{paragraph}\n\n")
+
+
+def paragraph_answers_question():
+    model = LLama2_7B_Chat_AWQ()
+    recipe = ParagraphAnswersQuestion()
+    
+    question = "What is my favourite food?"
+    
+    prompts = [
+        "My favourite colour is red.",
+        "My favourite food is pizza.",
+        "My favourite animal is the shark."
+    ]
+    
+    prompts, probabilities = recipe.call_recipe(
+        prompts=prompts,
+        question=question,
+        model=model
+    )
+    
+    for prompt, probability in zip(prompts, probabilities):
+        print(f"{prompt} || Probability: {probability:4f}")
