@@ -303,3 +303,43 @@ def answer_question_from_paper():
         num_paragraphs=3
     )
     print(output)
+
+
+def generate_subquestions():
+    model = LLama2_7B_Chat_AWQ()
+    recipe = GenerateSubquestions()
+    
+    prompts = [
+        "What is the time difference between Toronto and Vancouver?",
+        "What is the effect of creatine on cognition?",
+        "Will artificial intelligence be a net benefit for society?"
+    ]
+    
+    prompts, generations = recipe.call_recipe(
+        prompts=prompts,
+        model=model
+    )
+    
+    question_list = []
+    for prompt, generation in zip(prompts, generations):
+        question_dict = {
+            "question": prompt,
+            "sub_questions": []
+        }
+        sub_questions = generation.lstrip("Sub-questions:").strip()
+        sub_question_list = [" ".join(sub_question.split(" ")[1:]) for sub_question in sub_questions.split("\n")]
+        for sub_question in sub_question_list:
+            sub_question_dict = {
+                "question": sub_question,
+                "sub_questions": []
+            }
+            question_dict["sub_questions"].append(sub_question_dict)
+        question_list.append(question_dict)
+    
+    json_path = "./papers/question_list.json"
+    with open(json_path, "w") as json_file:
+        json.dump(question_list, json_file, indent=4)
+
+
+def answer_subquestions():
+    pass

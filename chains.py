@@ -394,3 +394,8 @@ class AnswerQuestionFromPaper(Chain):
             )
         
         return output.strip()
+
+
+class RecursiveSubQuestionAnswering(Chain):
+    def __init__(self):
+        pass

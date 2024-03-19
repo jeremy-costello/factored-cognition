@@ -329,6 +329,7 @@ class QAWithContext(Recipe):
 
 class Opinion(Recipe):
     def __init__(self):
+        super().__init__()
         self.system_message = \
             "You are a truthful and unbiased judge. You will be shown a statement. Please reply For if you agree with the statement, " \
             "or Against if you disagree with the statment. Please only answer For or Against."
@@ -363,6 +364,7 @@ class Opinion(Recipe):
 
 class Judgement(Recipe):
     def __init__(self):
+        super().__init__()
         self.system_message = \
             "You are a truthful and unbiased judge. You will be shown a statement and a debate about this statement between " \
             "two debators: one \"For\" the statement and one \"Against\" the statement. Please reply For if you agree with the " \
@@ -402,6 +404,7 @@ class Judgement(Recipe):
 
 class AuthorSplit(Recipe):
     def __init__(self):
+        super().__init__()
         self.system_message = \
             "You are a language assistant trained to extract names from text. You will be provided with an unformatted author " \
             "section from an academic paper. This author section contains one or more names. There may be other characters " \
@@ -430,6 +433,7 @@ class ParagraphAnswersQuestion(Recipe):
         Recipe (class): Base recipe class.
     """
     def __init__(self):
+        super().__init__()
         self.system_message = \
             "You are a language assistant trained to identify if a text passage answers a given question. You will be provided with a " \
             "text passage and a question. Please reply with Yes if the text passage answer the question, or No if the text passage " \
@@ -484,6 +488,29 @@ class ParagraphAnswersQuestion(Recipe):
         return original_prompts, yes_probabilities
 
 
+class GenerateSubquestions(Recipe):
+    def __init__(self):
+        super().__init__()
+        self.system_message = \
+            "You are an inquisitive language assistant trained to generate sub-questions that will help you answer a given question. " \
+            "Please generate 2-5 sub-questions based on the question given below. Start your answer with \"Sub-questions:\", and separate" \
+            "each sub-question into a numbered point (e.g. 1. 2. 3. 4. 5.). Make sure to separate each sub-question onto a new line."
+    
+    def call_recipe(self, prompts: List[str], model: Model) -> Tuple[List[str], List[str]]:
+        original_prompts = prompts
+        
+        prompts, sampling_params = self.get_generation_inputs(
+            prompts=prompts,
+            meta_prompt_template=model.meta_prompt_template,
+            max_tokens=model.context_length
+        )
+        
+        outputs = model.generate(prompts, sampling_params)
+        text_generations = [output.outputs[0].text.strip() for output in outputs]
+        
+        return original_prompts, text_generations
+
+
 class Classification(Recipe):
     """Classification recipe class.
 
@@ -491,6 +518,7 @@ class Classification(Recipe):
         Recipe (class): Base recipe class.
     """
     def __init__(self):
+        super().__init__()
         self.system_message = "You are a truthful and helpful oracle. Please only answer Yes or No to the following question."
         self.temperature = 0.0
         self.top_p = 1.0
