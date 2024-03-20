@@ -21,10 +21,10 @@ See ```LLaMa2``` and ```LLaMa2_7B_Chat_AWQ``` in ```models.py```.
 - Question answering (with and without context)
 - Debate (including a judge)
 - Extracting title, authors, abstract, sections from PDFs
-- Answering questions based on a PDF.
+- Answering questions based on a PDF
+- Recursive amplification
 
 ## To Do
-- Amplification
 - Verifiers
 - Tool Use
 - Deduction
