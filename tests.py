@@ -341,5 +341,18 @@ def generate_subquestions():
         json.dump(question_list, json_file, indent=4)
 
 
-def answer_subquestions():
-    pass
+def recursive_sub_question_answering():
+    model = LLama2_7B_Chat_AWQ()
+    chain = RecursiveSubQuestionAnswering(
+        model=model
+    )
+    
+    question = "Will artificial intelligence be a net benefit for society?"
+    
+    output = chain.run_chain(
+        question=question,
+        max_depth=1
+    )
+    print(output.question)
+    print(output.answer)
+    print(len(output.children))

@@ -489,6 +489,11 @@ class ParagraphAnswersQuestion(Recipe):
 
 
 class GenerateSubquestions(Recipe):
+    """Generate sub-questions from questions.
+
+    Args:
+        Recipe (class): Base recipe class.
+    """
     def __init__(self):
         super().__init__()
         self.system_message = \
@@ -497,6 +502,15 @@ class GenerateSubquestions(Recipe):
             "each sub-question into a numbered point (e.g. 1. 2. 3. 4. 5.). Make sure to separate each sub-question onto a new line."
     
     def call_recipe(self, prompts: List[str], model: Model) -> Tuple[List[str], List[str]]:
+        """Call the recipe.
+
+        Args:
+            prompts (List[str]): List of questions to generate sub-questions for.
+            model (Model): Text generation model.
+
+        Returns:
+            Tuple[List[str], List[str]]: List of questions and list of texts containing multiple sub-questions.
+        """
         original_prompts = prompts
         
         prompts, sampling_params = self.get_generation_inputs(

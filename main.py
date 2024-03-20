@@ -1,4 +1,4 @@
 from tests import *
 
 
-generate_subquestions()
+recursive_sub_question_answering()

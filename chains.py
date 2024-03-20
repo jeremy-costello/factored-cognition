@@ -1,8 +1,9 @@
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Any
 
 from models import Model
-from recipes import QAVariableContext, RawGeneration, ParagraphAnswersQuestion
+from recipes import QAVariableContext, RawGeneration, ParagraphAnswersQuestion, GenerateSubquestions
 from papers import extract_paper_from_pdf, transform_paper_dict_into_paragraph_list
+from utils import QuestionAnswerNode
 
 
 class Chain:
@@ -396,6 +397,120 @@ class AnswerQuestionFromPaper(Chain):
         return output.strip()
 
 
+# probably some way to batch model calls for vLLM. not sure how right now.
 class RecursiveSubQuestionAnswering(Chain):
-    def __init__(self):
-        pass
+    """Chain for recusive amplification: recursively generating and answering sub-questions to help answer a question.
+
+    Args:
+        Chain (class): Base chain class.
+    """
+    def __init__(self, model: Model):
+        """Class initialization function.
+
+        Args:
+            model (Model): Text generation model.
+        """
+        super().__init__(model=model)
+        
+        self.system_message = \
+            "You are a truthful and helpful oracle. You will be provided with a set of matching numbered sub-questions and sub-answers " \
+            "as context for answering a final question. Please answer the final question truthfully and succinctly, while using the " \
+            "context provided by the sub-questions and sub-answers."
+        self.prompt_template = "{context}\n\nFinal Question: {prompt}"
+        
+        self.context_intro = "You will be given the answer to {number} sub-questions as context.\n\n"
+        self.context_format = "Sub-question {number}: {sub_question}\nSub-answer {number}: {sub_answer}\n\n"
+    
+    def create_tree(self, root: QuestionAnswerNode, depth: int, max_depth: int) -> None:
+        """Recursively create a tree up to a maximum depth.
+
+        Args:
+            root (QuestionAnswerNode): Current node in the tree.
+            depth (int): Current depth of the tree.
+            max_depth (int): Maximum depth of the tree.
+        """
+        if depth < max_depth:
+            recipe = GenerateSubquestions()
+            
+            _, generations = recipe.call_recipe(
+                prompts=[root.question],
+                model=self.model
+            )
+            
+            generation = generations[0]
+            sub_questions = generation.lstrip("Sub-questions:").strip()
+            
+            sub_question_list = [" ".join(sub_question.split(" ")[1:]) for sub_question in sub_questions.split("\n")]
+            for sub_question in sub_question_list:
+                child_node = QuestionAnswerNode(sub_question)
+                root.add_child(child_node)
+                self.create_tree(child_node, depth + 1, max_depth)
+    
+    def reverse_inorder_traversal(self, node: QuestionAnswerNode) -> None:
+        """Reverse in-order traversal of the tree. For answering questions with the context of answered sub-questions.
+
+        Args:
+            node (QuestionAnswerNode): Current node in the tree.
+        """
+        for child in reversed(node.children):
+            self.reverse_inorder_traversal(child)
+        if node.children:
+            recipe = QAVariableContext(
+                context=True,
+                system_message=self.system_message,
+                prompt_template=self.prompt_template,
+                chain_of_thought=False
+            )
+            
+            context = self.context_intro.format(
+                number=len(node.children)
+            )
+            for index, child in enumerate(node.children, start=1):
+                context += self.context_format.format(
+                    number=index,
+                    sub_question=child.question,
+                    sub_answer=child.answer
+                )
+            _, answers = recipe.call_recipe(
+                prompts=[node.question],
+                model=self.model,
+                contexts=[context]
+            )
+            node.answer_question(
+                answer=answers[0]
+            )
+        else:
+            recipe = QAVariableContext(
+                context=False
+            )
+            _, answers = recipe.call_recipe(
+                prompts=[node.question],
+                model=self.model
+            )
+            node.answer_question(
+                answer=answers[0]
+            )
+                
+    def run_chain(self, question: str, max_depth: int) -> QuestionAnswerNode:
+        """Run the chain.
+
+        Args:
+            question (str): Question to be answered.
+            max_depth (int): Maximum depth of the tree.
+
+        Returns:
+            QuestionAnswerNode: Root node of the tree.
+        """
+        root = QuestionAnswerNode(question)
+        
+        self.create_tree(
+            root=root,
+            depth=0,
+            max_depth=max_depth
+        )
+        
+        self.reverse_inorder_traversal(
+            node=root
+        )
+        
+        return root
