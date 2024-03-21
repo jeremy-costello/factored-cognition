@@ -488,6 +488,91 @@ class ParagraphAnswersQuestion(Recipe):
         return original_prompts, yes_probabilities
 
 
+class ParagraphComparison(Recipe):
+    """Recipe for deciding which of two paragraphs helps to better answer a question.
+
+    Args:
+        Recipe (class): Base recipe class.
+    """
+    def __init__(self):
+        super().__init__()
+        self.system_message = \
+            "You are a language assistant trained to identify which of two paragraphs better answers a given question by replying " \
+            "Alpha or Beta. You will be provided with two paragraphs: Alpha and Beta, and a question. Please reply with which " \
+            "paragraph better answers the question: Alpha or Beta. Please only answer Alpha or Beta. Don't always answer Alpha!"
+        self.temperature = 0.0
+        self.top_p = 1.0
+        self.repetition_penalty = 1.0
+        
+        self.prompt_template = "Paragraph Alpha: {paragraph_1}\n\nParagraph Beta: {paragraph_2}\n\nQuestion: {question}"
+    
+    def call_recipe(self, prompts: List[Tuple[str, str]], questions: Union[str, List[str]], model: Model) -> Tuple[List[Tuple[str, str]], List[str], List[float]]:
+        """Call the recipe.
+
+        Args:
+            prompts (List[Tuple[str, str]]): List of pairs of prompts (paragraphs).
+            questions (Union[str, List[str]]): Question to answer, or list of questions to answer.
+            model (Model): Text generation model.
+        
+        Raises:
+            ValueError: If questions is not a string or list.
+
+        Returns:
+            Tuple[List[Tuple[str, str]], List[str], List[float]]:
+                Tuple of (list of original prompt pairs, list of model decision, list of decision probabilities).
+        """
+        original_prompts = prompts
+        
+        if isinstance(questions, str):
+            prompts = [
+                self.prompt_template.format(
+                    paragraph_1=paragraph_1,
+                    paragraph_2=paragraph_2,
+                    question=questions
+                )
+                for (paragraph_1, paragraph_2) in prompts
+            ]
+        elif isinstance(questions, list):
+            assert len(prompts) == len(questions)
+            prompts = [
+                self.prompt_template.format(
+                    paragraph_1=paragraph_1,
+                    paragraph_2=paragraph_2,
+                    question=question
+                )
+                for (paragraph_1, paragraph_2), question in zip(prompts, questions)
+            ]
+        else:
+            raise ValueError("Invalid type. Questions should be a string or list.")
+        
+        prompts, sampling_params = self.get_generation_inputs(
+            prompts=prompts,
+            meta_prompt_template=model.meta_prompt_template,
+            max_tokens=1,
+            logprobs=1
+        )
+        
+        outputs = model.generate(prompts, sampling_params)
+        
+        decisions = []
+        probabilities = []
+        for output in outputs:
+            generated_text = output.outputs[0].text.strip()
+            if generated_text == "Alpha"[:len(generated_text)]:
+                decision = "A"
+                prob = np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            elif generated_text == "Beta"[:len(generated_text)]:
+                decision = "B"
+                prob = np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            else:
+                decision = None
+                prob = -1.0
+            decisions.append(decision)
+            probabilities.append(prob)
+        
+        return original_prompts, decisions, probabilities
+
+
 class GenerateSubquestions(Recipe):
     """Generate sub-questions from questions.
 

@@ -300,9 +300,41 @@ def answer_question_from_paper():
     output = chain.run_chain(
         paper=paper,
         question=question,
-        num_paragraphs=3
+        num_paragraphs=0
     )
     print(output)
+
+
+def tokenizer_test():
+    model = LLama2_7B_Chat_AWQ()
+    tokenizer = model.llm.llm_engine.tokenizer.tokenizer
+    
+    text = "The quick brown fox jumps over the lazy dog.\n\n"
+    
+    tokenized_text = tokenizer.encode(text, add_special_tokens=False)
+    print(tokenized_text)
+
+
+# this always chooses the first prompt for some reason.
+def paragraph_comparison():
+    model = LLama2_7B_Chat_AWQ()
+    recipe = ParagraphComparison()
+    
+    prompts = [
+        ("My favourite food is pizza.", "My favourite colour is red."),
+        ("My favourite colour is red.", "My favourite food is pizza."),
+    ]
+    
+    questions = "What is my favourite food?"
+    
+    prompts, decisions, probabilities = recipe.call_recipe(
+        prompts=prompts,
+        questions=questions,
+        model=model
+    )
+    
+    for prompt, decision, probability in zip(prompts, decisions, probabilities):
+        print(prompt, decision, probability)
 
 
 def generate_subquestions():

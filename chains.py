@@ -333,6 +333,8 @@ class AnswerQuestionFromPaper(Chain):
         Returns:
             str: Output with model answer and paragraphs used as context.
         """
+        assert num_paragraphs >= 0 and isinstance(num_paragraphs, int)
+        
         paper_dict = extract_paper_from_pdf(
             pdf_path=paper,
             use_llm=False
@@ -355,26 +357,53 @@ class AnswerQuestionFromPaper(Chain):
         numbered_probabilities = [(index, probability) for index, probability in enumerate(probabilities)]
         sorted_probabilities = sorted(numbered_probabilities, key=lambda x: x[1], reverse=True)
         
+        recipe = QAVariableContext(
+            context=True
+        )
+        
+        tokenizer = self.model.llm.llm_engine.tokenizer.tokenizer
+        
+        input_without_context = self.model.meta_prompt_template.format(
+            system_message=recipe.system_message,
+            prompt=recipe.prompt_template.format(
+                context="",
+                prompt=question
+            )
+        )
+        
+        iwc_tokens = tokenizer.encode(input_without_context, add_special_tokens=True)
+        remaining_input_length = self.model.context_length - len(iwc_tokens)
+        
+        if num_paragraphs == 0:
+            num_paragraphs = len(sorted_probabilities)
+        
         top_indices = [index for index, _ in sorted_probabilities[:num_paragraphs]]
         top_paragraphs = [true_paragraph_list[index] for index in top_indices]
         
         context = self.context_intro.format(
             number=num_paragraphs
         )
+        
+        number_of_paragraphs = num_paragraphs
         for index, paragraph in enumerate(top_paragraphs, start=1):
-            context += self.context_format.format(
+            potential_added_context = self.context_format.format(
                 number=index,
                 paragraph=paragraph
             )
-        
-        recipe = QAVariableContext(
-            context=True
-        )
-        
+            
+            pac_tokens = tokenizer.encode(potential_added_context, add_special_tokens=False)
+            remaining_input_length -= len(pac_tokens)
+            # last two new-line characters will be stripped
+            if remaining_input_length >= -2:
+                context += potential_added_context
+            else:
+                number_of_paragraphs = index
+                break
+            
         _, generations = recipe.call_recipe(
             prompts=[question],
             model=self.model,
-            contexts=[context.strip()]
+            contexts=[context.rstrip()]
         )
         
         generation = generations[0]
@@ -382,7 +411,7 @@ class AnswerQuestionFromPaper(Chain):
             generation=generation
         )
         
-        top_full_paragraph_infos = [paragraph_list[index] for index in top_indices]
+        top_full_paragraph_infos = [paragraph_list[index] for index in top_indices[:number_of_paragraphs]]
         
         for index, (page, section_name, section_num, paragraph_num, paragraph) in enumerate(top_full_paragraph_infos, start=1):
             output += self.output_contexts.format(
