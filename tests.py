@@ -383,7 +383,7 @@ def recursive_sub_question_answering():
     
     output = chain.run_chain(
         question=question,
-        max_depth=1
+        max_depth=2
     )
     print(output.question)
     print(output.answer)

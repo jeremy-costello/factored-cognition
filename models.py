@@ -6,7 +6,7 @@ class Model:
     """Base model class.
     """
     def __init__(self):
-        self.llm = None
+        pass
     
     def generate(self, prompts: List[str], sampling_params: SamplingParams) -> List[str]:
         """Generate responses from prompts.
@@ -20,6 +20,11 @@ class Model:
         """
         assert isinstance(self.llm, LLM)
         return self.llm.generate(prompts, sampling_params)
+
+    def tokenize(self, input: str, add_special_tokens: bool) -> List:
+        tokenizer = self.llm.llm_engine.tokenizer.tokenizer
+        tokens = tokenizer.encode(input, add_special_tokens=add_special_tokens)
+        return tokens
 
 
 class LLaMa2(Model):

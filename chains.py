@@ -360,9 +360,7 @@ class AnswerQuestionFromPaper(Chain):
         recipe = QAVariableContext(
             context=True
         )
-        
-        tokenizer = self.model.llm.llm_engine.tokenizer.tokenizer
-        
+                
         input_without_context = self.model.meta_prompt_template.format(
             system_message=recipe.system_message,
             prompt=recipe.prompt_template.format(
@@ -371,7 +369,7 @@ class AnswerQuestionFromPaper(Chain):
             )
         )
         
-        iwc_tokens = tokenizer.encode(input_without_context, add_special_tokens=True)
+        iwc_tokens = self.model.tokenize(input_without_context, add_special_tokens=True)
         remaining_input_length = self.model.context_length - len(iwc_tokens)
         
         if num_paragraphs == 0:
@@ -391,7 +389,7 @@ class AnswerQuestionFromPaper(Chain):
                 paragraph=paragraph
             )
             
-            pac_tokens = tokenizer.encode(potential_added_context, add_special_tokens=False)
+            pac_tokens = self.model.tokenize(potential_added_context, add_special_tokens=False)
             remaining_input_length -= len(pac_tokens)
             # last two new-line characters will be stripped
             if remaining_input_length >= -2:
@@ -472,6 +470,7 @@ class RecursiveSubQuestionAnswering(Chain):
             sub_question_list = [" ".join(sub_question.split(" ")[1:]) for sub_question in sub_questions.split("\n")]
             for sub_question in sub_question_list:
                 child_node = QuestionAnswerNode(sub_question)
+                child_node.set_upstream_questions(root)
                 root.add_child(child_node)
                 self.create_tree(child_node, depth + 1, max_depth)
     
@@ -509,6 +508,7 @@ class RecursiveSubQuestionAnswering(Chain):
                 answer=answers[0]
             )
         else:
+            print(node.upstream_questions)
             recipe = QAVariableContext(
                 context=False
             )
