@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import TypeVar, List
 
 
 # not really sure what this does
@@ -42,4 +42,11 @@ class QuestionAnswerNode:
             parent_node (QuestionAnswerNode): This node's parent node.
         """
         self.upstream_questions = parent_node.upstream_questions + [parent_node.question]
-        
+
+
+def render_steps(step_list: List[str]) -> str:
+    step_list_string = ""
+    for index, step in enumerate(step_list, start=1):
+        step_list_string += f"{index}. {step}\n"
+    
+    return step_list_string

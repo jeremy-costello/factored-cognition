@@ -21,9 +21,9 @@ class Model:
         assert isinstance(self.llm, LLM)
         return self.llm.generate(prompts, sampling_params)
 
-    def tokenize(self, input: str, add_special_tokens: bool) -> List:
+    def tokenize(self, input_string: str, add_special_tokens: bool) -> List[int]:
         tokenizer = self.llm.llm_engine.tokenizer.tokenizer
-        tokens = tokenizer.encode(input, add_special_tokens=add_special_tokens)
+        tokens = tokenizer.encode(input_string, add_special_tokens=add_special_tokens)
         return tokens
 
 

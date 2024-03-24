@@ -6,6 +6,7 @@ from models import LLama2_7B_Chat_AWQ
 from recipes import *
 from chains import *
 from papers import *
+from utils import *
 
 
 def hello_world():
@@ -388,3 +389,83 @@ def recursive_sub_question_answering():
     print(output.question)
     print(output.answer)
     print(len(output.children))
+
+
+def verify_answer():
+    model = LLama2_7B_Chat_AWQ()
+    recipe = VerifyAnswer()
+
+    questions = [
+        "What is 1 + 1?",
+        "Who is the president of Argentina?",
+        "What is the capital of France?"
+    ]
+    
+    answers = [
+        "1 + 1 is equal to 2.",
+        "The president of Argentina is Joe Biden.",
+        "The capital of France is Paris."
+    ]
+    
+    qa_prompts, probabilities = recipe.call_recipe(
+        questions=questions,
+        answers=answers,
+        model=model
+    )
+    
+    for qa_prompt, probability in zip(qa_prompts, probabilities):
+        print(f"{qa_prompt}\n\nProbability: {probability:4f}\n\n")
+
+
+# this isn't super consistent
+def verify_reasoning_step():
+    model = LLama2_7B_Chat_AWQ()
+    recipe = VerifyReasoningStep()
+    
+    question = "Beth bakes 4x 2 dozen batches of cookies in a week. If these cookies are shared amongst 16 people equally, how many cookies does each person consume?"
+
+    steps = [
+        "Beth bakes 4x 2 dozen batches of cookies for a total of 4*2 = 8 dozen cookies",
+        "There are 12 cookies in a dozen and she makes 8 dozen cookies for a total of 12*8 = 96 cookies",
+        "She splits the 96 cookies equally amongst 16 people so they each eat 96/16 = 6 cookies",
+        "So, the final answer is 6 cookies per person.",
+    ]
+    
+    answers = []
+    for index in range(1, len(steps) + 1):
+        answers.append(render_steps(steps[:index]))
+    
+    qa_prompts, probabilities = recipe.call_recipe(
+        questions=question,
+        answers=answers,
+        model=model
+    )
+    
+    for qa_prompt, probability in zip(qa_prompts, probabilities):
+        print(f"{qa_prompt}\n\nProbability: {probability:4f}\n\n")
+
+
+def verify_reasoning_steps():
+    model = LLama2_7B_Chat_AWQ()
+    recipe = QAVariableContext(
+        context=False,
+        chain_of_thought=True
+    )
+
+    prompts = [
+        "What is 1 + 1?",
+        "Who is the president of Argentina?",
+        "What is the capital of France?"
+    ]
+
+    prompts, generations = recipe.call_recipe(
+        prompts=prompts,
+        model=model
+    )
+    
+    for generation in generations:
+        steps_string = generation.lstrip(recipe.chain_of_thought_prefix).strip()
+        steps_list = steps_string.split("\n")
+        stripped_steps_list = [":".join(step.split(":")[1:]).strip() for step in steps_list]
+        print(generation)
+        print(stripped_steps_list)

@@ -146,7 +146,9 @@ class QAVariableContext(Recipe):
         self.chain_of_thought = chain_of_thought
         if self.chain_of_thought:
             self.chain_of_thought_prefix = "Let's think step by step.\n"
-            self.system_message += f" Your answer will begin with \"{self.chain_of_thought_prefix}\" Please number the steps of your thought process."
+            self.system_message += \
+                f" Your answer will begin with \"{self.chain_of_thought_prefix}\" Please number the steps of your thought process, " \
+                "beginning with 1. For example, the first step should begin with \"Step 1:\"."
             
     def call_recipe(self, prompts: List[str], model: Model, contexts: Union[str, List[str], None] = None) -> Tuple[List[str], List[str]]:
         """Question answering with or without context recipe call.
@@ -198,7 +200,7 @@ class QAVariableContext(Recipe):
         outputs = model.generate(prompts, sampling_params)
         text_generations = [output.outputs[0].text.strip() for output in outputs]
         
-        if self.chain_of_thought and not self.raw_generation_prompt:
+        if self.chain_of_thought:
             text_generations = [self.chain_of_thought_prefix + text_generation for text_generation in text_generations]
         
         return unformatted_prompts, text_generations
@@ -610,6 +612,119 @@ class GenerateSubquestions(Recipe):
         return original_prompts, text_generations
 
 
+class VerifyAnswer(Recipe):
+    def __init__(self):
+        super().__init__()
+        self.system_message = \
+            "You are a truthful and helpful oracle. You will be shown a question and an answer to the question. Please respond " \
+            "Yes if the answer is correct, or No if the answer is incorrect. Please only respond Yes or No."
+            
+        self.temperature = 0.0
+        self.top_p = 1.0
+        self.repetition_penalty = 1.0
+        
+        self.prompt_template = "Question: {question}\n\nAnswer: {answer}"
+    
+    def call_recipe(self, questions: Union[str, List[str]], answers: List[str], model: Model) -> Tuple[List[str], List[float]]:
+        if isinstance(questions, str):
+            prompts = [
+                self.prompt_template.format(
+                    question=questions,
+                    answer=answer
+                )
+                for answer in answers
+            ]
+        elif isinstance(questions, list):
+            assert len(questions) == len(answers)
+            prompts = [
+                self.prompt_template.format(
+                    question=question,
+                    answer=answer
+                )
+                for question, answer in zip(questions, answers)
+            ]
+        else:
+            raise ValueError("Invalid type. Questions should be a string or list.")
+        
+        prompts, sampling_params = self.get_generation_inputs(
+            prompts=prompts,
+            meta_prompt_template=model.meta_prompt_template,
+            max_tokens=1,
+            logprobs=1
+        )
+        outputs = model.generate(prompts, sampling_params)
+        
+        yes_probabilities = []
+        for output in outputs:
+            generated_text = output.outputs[0].text.strip()
+            if generated_text == "Yes":
+                prob = np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            elif generated_text == "No":
+                prob = 1.0 - np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            else:
+                prob = -1.0
+            yes_probabilities.append(prob)
+        
+        return prompts, yes_probabilities
+
+
+class VerifyReasoningStep(Recipe):
+    def __init__(self):
+        super().__init__()
+        self.system_message = \
+            "You are a truthful and helpful oracle. You will be shown a question and a partial list of reasoning steps used to answer " \
+            "the question. Please respond Yes if the final reasoning step is correct and a valid step towards answering the question, " \
+            "or No if the final reasoning step is incorrect and not a valid step towards answering the question. Please only respond Yes or No."
+            
+        self.temperature = 0.0
+        self.top_p = 1.0
+        self.repetition_penalty = 1.0
+        
+        self.prompt_template = "Question: {question}\n\nReasoning Steps:\n{answer}"
+    
+    def call_recipe(self, questions: Union[str, List[str]], answers: List[str], model: Model) -> Tuple[List[str], List[float]]:
+        if isinstance(questions, str):
+            prompts = [
+                self.prompt_template.format(
+                    question=questions,
+                    answer=answer
+                )
+                for answer in answers
+            ]
+        elif isinstance(questions, list):
+            assert len(questions) == len(answers)
+            prompts = [
+                self.prompt_template.format(
+                    question=question,
+                    answer=answer
+                )
+                for question, answer in zip(questions, answers)
+            ]
+        else:
+            raise ValueError("Invalid type. Questions should be a string or list.")
+        
+        prompts, sampling_params = self.get_generation_inputs(
+            prompts=prompts,
+            meta_prompt_template=model.meta_prompt_template,
+            max_tokens=1,
+            logprobs=1
+        )
+        outputs = model.generate(prompts, sampling_params)
+        
+        yes_probabilities = []
+        for output in outputs:
+            generated_text = output.outputs[0].text.strip()
+            if generated_text == "Yes":
+                prob = np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            elif generated_text == "No":
+                prob = 1.0 - np.exp(list(output.outputs[0].logprobs[0].values())[0])
+            else:
+                prob = -1.0
+            yes_probabilities.append(prob)
+        
+        return prompts, yes_probabilities
+
+
 class Classification(Recipe):
     """Classification recipe class.
 
@@ -653,4 +768,4 @@ class Classification(Recipe):
             yes_probabilities.append(prob)
         
         return yes_probabilities
-    
+        
