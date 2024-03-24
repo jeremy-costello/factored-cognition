@@ -23,9 +23,15 @@ See ```LLaMa2``` and ```LLaMa2_7B_Chat_AWQ``` in ```models.py```.
 - Extracting title, authors, abstract, sections from PDFs
 - Answering questions based on a PDF
 - Recursive amplification
+- Verifiers
 
 ## To Do
-- Verifiers
+- Verification chain
 - Tool Use
 - Deduction
 - Action Selection
+
+### Exercises
+- Long texts: 3
+- Amplification: 1, 2, 3
+- Verifiers: 1, 2
